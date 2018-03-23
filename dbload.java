@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 
-public class Main {
+public class dbload {
 
 	public static void main(String[] args) {
 		if(args.length != 3)
@@ -58,7 +58,7 @@ public class Main {
 					continue;					
 				}
 				
-				if((data.length() * 2) + (line.length() * 2) > pageSize)
+				if((data.getBytes().length) + (line.getBytes().length * 2) > pageSize)
 				{
 					byte[] writeData = data.getBytes();
 					outputStream.write(writeData);
@@ -69,16 +69,17 @@ public class Main {
 				}
 				
 				String[] tokens = line.split("\t");
-				data += "[";
+				
 				for (int i = 1; i < tokens.length; i++)
 				{
 					if((i+1) == tokens.length)
 					{
 						data += tokens[i];
+						continue;
 					}
 					data += tokens[i] + ",";
 				}
-				data += "]";
+				data += "\n";
 				if(loopCounter == 500)
 				{
 					break;
@@ -92,9 +93,5 @@ public class Main {
 		{
 			e.printStackTrace();
 		}
-	}
-	public void write()
-	{
-		
 	}
 }

@@ -4,6 +4,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 public class dbquery {
 	
@@ -41,20 +43,24 @@ public class dbquery {
 			File dataFile = new File("Heap."+pageSize);
 			FileReader fileReader = new FileReader(dataFile);
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
-			FileOutputStream outputStream = new FileOutputStream("Heap."+pageSize);
 			while(!isFound)
 			{
 				while ((line = bufferedReader.readLine()) != null) 
 				{
-					String[] tokens = line.split(",");
-					if(tokens[0].equals(name))
+					//First token is an int, the rest is text
+					String[] binaryTokens = line.split(" ", 2);
+					String actualText = "" + Integer.parseInt(binaryTokens[0], 2);
+					actualText += convertBinaryStringToString(binaryTokens[1]);
+					String[] tokens = actualText.split("\\|");
+					if(tokens[1].equals(name))
 					{
 						isFound = true;
-						System.out.println(line);
+						System.out.println(actualText);
 					}
 				}
 				pageCounter++;
 				fileReader.close();
+				//Moving to the next file
 				dataFile = new File("Heap."+pageSize+"."+pageCounter);
 				fileReader = new FileReader(dataFile);
 				bufferedReader = new BufferedReader(fileReader);
@@ -64,5 +70,39 @@ public class dbquery {
 		{
 			e.printStackTrace();
 		}
+	}
+	
+	/*
+		Credit to https://codereview.stackexchange.com/questions/88451/converting-a-binary-string-to-an-ascii-string-the-longer-way#answer-88459
+		For the design of these two functions which enable the program to convert binary (string) data to readable string data
+	*/
+	public static String convertBinaryStringToString(String string)
+	{
+		StringBuilder sb = new StringBuilder();
+		String[] blocks = string.split(" ");
+
+		for (int i = 0; i < blocks.length; i++)
+		{
+			int result = convertBlock(blocks[i]);
+			sb.append(Character.toChars(result));
+		}
+		
+		return sb.toString();
+	}
+
+	private static int convertBlock(String block) 
+	{
+		int [] mapping = {128,64,32,16,8,4,2,1};
+		int sum = 0;
+		int blockPosition = block.length() - 1;
+		while(blockPosition >0 )
+		{
+			if(block.charAt(blockPosition) == '1')
+			{
+				sum+=mapping[blockPosition];
+			}
+			blockPosition--;
+		}
+		return sum;
 	}
 }

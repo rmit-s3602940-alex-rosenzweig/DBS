@@ -68,7 +68,7 @@ public class dbload
 					outputStream.write(writeData);
 					outputStream.close();
 					pageCounter++;
-					outputStream = new FileOutputStream("Heap."+pageSize+"."+pageCounter);
+					outputStream = new FileOutputStream("Heap."+pageCounter+"."+pageSize);
 					data = "";
 				}
 				
@@ -86,7 +86,7 @@ public class dbload
 						continue;
 					}
 					
-				temp += toBinary("|");
+					temp += toBinary("|");
 					data += temp;
 				}
 				data += "\n";

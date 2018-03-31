@@ -59,10 +59,15 @@ public class dbquery {
 						System.out.println("Record: " + actualText);
 					}
 				}
+				//safety break so as to avoid accessing nonexistant files
+				if(isFound)
+				{
+					break;
+				}
 				pageCounter++;
 				fileReader.close();
 				//Moving to the next file
-				dataFile = new File("Heap."+pageSize+"."+pageCounter);
+				dataFile = new File("Heap."+pageCounter+"."+pageSize);
 				fileReader = new FileReader(dataFile);
 				bufferedReader = new BufferedReader(fileReader);
 			}

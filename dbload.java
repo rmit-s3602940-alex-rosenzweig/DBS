@@ -5,7 +5,8 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
-public class dbload {
+public class dbload 
+{
 	public static void main(String[] args) {
 		if(args.length != 3)
 		{
@@ -42,9 +43,11 @@ public class dbload {
 		String data = "";
 		int pageCounter = 0;
 		int loopCounter = 0;
+		double startTime = System.currentTimeMillis();
 		// based heavily on http://www.avajava.com/tutorials/lessons/how-do-i-read-a-string-from-a-file-line-by-line.html
 		try 
 		{
+			
 			File dataFile = new File(fileName);
 			FileReader fileReader = new FileReader(dataFile);
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
@@ -87,18 +90,30 @@ public class dbload {
 					data += temp;
 				}
 				data += "\n";
-				if(loopCounter == 500)
-				{
-					break;
-				}
 				loopCounter++;
 			}
+			
+			//Final Write on remaining data
+			byte[] writeData = data.getBytes();
+			outputStream.write(writeData);
+			outputStream.close();
+			pageCounter++;
+			outputStream = new FileOutputStream("Heap."+pageSize+"."+pageCounter);
+			data = "";
 			
 			fileReader.close();
 		} 
 		catch (IOException e)
 		{
 			e.printStackTrace();
+		}
+		finally
+		{
+			pageCounter++;
+			double timeTaken = System.currentTimeMillis() - startTime;
+			System.out.println("Records Loaded: " + loopCounter);
+			System.out.println("Pages Used: " + pageCounter);
+			System.out.println("Time Elapse (ms): " + timeTaken);
 		}
 	}
 	

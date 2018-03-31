@@ -37,6 +37,7 @@ public class dbquery {
 		Boolean isFound = false;
 		int pageCounter = 0;
 		int loopCounter = 0;
+		double startTime = System.currentTimeMillis();
 		// based heavily on http://www.avajava.com/tutorials/lessons/how-do-i-read-a-string-from-a-file-line-by-line.html
 		try 
 		{
@@ -55,7 +56,7 @@ public class dbquery {
 					if(tokens[1].equals(name))
 					{
 						isFound = true;
-						System.out.println(actualText);
+						System.out.println("Record: " + actualText);
 					}
 				}
 				pageCounter++;
@@ -69,6 +70,11 @@ public class dbquery {
 		catch (IOException e)
 		{
 			e.printStackTrace();
+		}
+		finally
+		{
+			double timeTaken = System.currentTimeMillis() - startTime;
+			System.out.println("Time Taken (ms): " + timeTaken);
 		}
 	}
 	

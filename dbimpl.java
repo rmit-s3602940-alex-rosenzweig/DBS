@@ -75,18 +75,20 @@ public interface dbimpl
 
    //Determines Number of Buckets per slot
    //I have set this to 64 but will change for information used in report
-   public static final int NUM_BUCKETS = 64;
+   public static final int NUM_CONTAINERS = 64;
    
    public void readArguments(String args[]);
 
    public boolean isInteger(String s);
    
    //New Function to computer hash
-   public static int getHash(int x)
+   public static int getHash(String s)
    {
 	   //Temporary Hash Function
-	   //X Mod 8
-	   return x%8;
+	   //Gets the hash code for each string
+	   //Returns the absolute value
+	   //Distribution should be even as the hash code is pseudo random
+	   return Math.abs(s.hashCode() % NUM_CONTAINERS);
    }
 
 }

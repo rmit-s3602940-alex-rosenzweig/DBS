@@ -82,6 +82,9 @@ public interface dbimpl
    //I have set this to 64 but will change for information used in report
    public static final int NUM_CONTAINERS = 64;
    
+   //Boolean that allows the user to see the
+   //Intermediary files used to temporarily hold data
+   public static final boolean DEBUG = false;
    
    public void readArguments(String args[]);
 

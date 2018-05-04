@@ -1,5 +1,4 @@
 import java.io.*;
-import java.util.*;
 import java.nio.ByteBuffer;
 
 /**
@@ -50,7 +49,7 @@ public class dbload implements dbimpl {
 		/*
 		 * Variable Provided in startup code
 		 */
-		dbload load = new dbload();
+		//dbload load = new dbload();
 		BufferedReader br = null;
 		String line = "";
 		String stringDelimeter = "\t";
@@ -77,7 +76,7 @@ public class dbload implements dbimpl {
 			while ((line = br.readLine()) != null) {
 				String[] entry = line.split(stringDelimeter, -1);
 				hashIndex = dbimpl.getHash(entry[1]);
-				//System.out.println(hashIndex);
+				// System.out.println(hashIndex);
 				RECORD = createRecord(RECORD, entry, containers[hashIndex].getCurPageNumRecords());
 				// outCount is to count record and reset everytime
 				// the number of bytes has exceed the pagesize
@@ -102,12 +101,12 @@ public class dbload implements dbimpl {
 					// final add on at end of file
 					for (int i = 0; i < containers.length; i++) {
 						totalPages += containers[i].getNumPages();
-						
-							containers[i].eofByteAddOn(pagesize);
-							// reset counter to start newpage
-							containers[i].setCurPageNumRecords(0);
-							containers[i].setNumPages(containers[i].getNumPages() + 1);
-						
+
+						containers[i].eofByteAddOn(pagesize);
+						// reset counter to start newpage
+						containers[i].setCurPageNumRecords(0);
+						containers[i].setNumPages(containers[i].getNumPages() + 1);
+
 						containers[i].closeOutputStream();
 					}
 					br.close();
@@ -117,45 +116,50 @@ public class dbload implements dbimpl {
 			}
 		}
 		// Writing to heap file
-		try
-		{
-			BufferedWriter bw = new BufferedWriter(new FileWriter(hashIndexFile));
-			for(int i = containers.length-1; i >= 0; i--)
-			{
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(HEAP_FNAME+pagesize));
+			for (int i = containers.length - 1; i >= 0; i--) {
 				br = new BufferedReader(new FileReader(containers[i].getFileName()));
+				int j = 0;
 				char[] buf = new char[pagesize];
-				while(br.read(buf) != -1)
-				{
+				while (j < containers[i].getNumPages()) {
+					br.read(buf);
 					bw.write(buf);
+					j++;
 				}
 				br.close();
 			}
 			bw.close();
-	        
-	        
-	        //Writes the data for the hash file
-	        BufferedWriter writer = new BufferedWriter(new FileWriter(hashIndexFile));
-	        writer.write("HashCode"+hashDelim+"NumFullPages"+hashDelim+"RecordsInIncompletePage");
-        	writer.newLine();
-	        for(int i = NUM_CONTAINERS-1; i >= 0; i--)
-	        {
-	        	writer.write(i + hashDelim+containers[i].getNumPages()+
-	        			hashDelim+containers[i].getCurPageNumRecords());
-	        	writer.newLine();
-	        }
-	        writer.close();
-	        
-	        
-		}
-		catch(Exception e)
-		{
+
+			// Writes the data for the hash file
+			BufferedWriter writer = new BufferedWriter(new FileWriter(hashIndexFile));
+			writer.write("HashCode" + hashDelim + "NumFullPages" + hashDelim + "RecordsInIncompletePage");
+			writer.newLine();
+			for (int i = NUM_CONTAINERS - 1; i >= 0; i--) {
+				writer.write(
+						i + hashDelim + containers[i].getNumPages() + hashDelim + containers[i].getCurPageNumRecords());
+				writer.newLine();
+			}
+			writer.close();
+			
+			//Deletes intermediary files used by containers
+			if(!DEBUG)
+			{
+				for(int i = 0; i < containers.length; i++)
+				{
+					File file = new File("ContainerData"+i+".dat");
+					file.delete();
+				}
+			}
+
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		System.out.println("Page total: " + totalPages);
 		System.out.println("Record total: " + recCount);
 	}
-        
+
 	// create byte array for a field and append to record array at correct
 	// offset using array copy
 	public void copy(String entry, int SIZE, int DATA_OFFSET, byte[] rec) throws UnsupportedEncodingException {

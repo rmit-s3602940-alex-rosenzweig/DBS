@@ -72,10 +72,16 @@ public interface dbimpl
                            + BN_RENEW_DT_SIZE
                            + BN_STATE_NUM_SIZE
                            + BN_STATE_OF_REG_SIZE;
+   
+   //name of the file that the hash index data is written too
+   public static final String hashIndexFile = "hashIndex.dat";
+   //Delimeter for all the data stored in the hash index file
+   public static final String hashDelim = ",";
 
-   //Determines Number of Buckets per slot
+   //Determines the Number of Container Slots
    //I have set this to 64 but will change for information used in report
    public static final int NUM_CONTAINERS = 64;
+   
    
    public void readArguments(String args[]);
 
@@ -88,7 +94,8 @@ public interface dbimpl
 	   //Gets the hash code for each string
 	   //Returns the absolute value
 	   //Distribution should be even as the hash code is pseudo random
-	   return Math.abs(s.hashCode() % NUM_CONTAINERS);
+	   // ((438439 × k + 34723753) MOD 376307) MOD 10
+	   return Math.abs((((438439 * s.hashCode()) + 34723753) %  376307) % NUM_CONTAINERS);
    }
 
 }

@@ -26,6 +26,11 @@ public class Container {
 		return pages;
 	}
 	
+	public String getFileName()
+	{
+		return fileName;
+	}
+	
 	//Setters
 	public void setCurPageNumRecords(int x)
 	{

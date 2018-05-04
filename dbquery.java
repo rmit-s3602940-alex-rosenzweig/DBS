@@ -31,7 +31,6 @@ public class dbquery implements dbimpl {
 			}
 		} else if (args.length == 4) {
 			if (isInteger(args[1]) && args[2].equals("-i")) {
-				System.out.println(args[3]);
 				SearchIndex(args[0], Integer.parseInt(args[1]), args[3]);
 			}
 		} else {
@@ -210,6 +209,7 @@ public class dbquery implements dbimpl {
 				}
 				pageCount++;
 			}
+			fis.close();
 		} catch (FileNotFoundException e) {
 			System.out.println("File: " + HEAP_FNAME + pagesize + " not found.");
 		} catch (IOException e) {

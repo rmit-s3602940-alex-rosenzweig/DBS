@@ -107,6 +107,12 @@ public class dbload implements dbimpl {
 					// final add on at end of file
 					for (int i = 0; i < containers.length; i++) {
 						totalPages += containers[i].getNumPages();
+						
+							containers[i].eofByteAddOn(pagesize);
+							// reset counter to start newpage
+							containers[i].setCurPageNumRecords(0);
+							containers[i].setNumPages(containers[i].getNumPages() + 1);
+						
 						containers[i].closeOutputStream();
 					}
 					br.close();
@@ -128,7 +134,7 @@ public class dbload implements dbimpl {
 			{
 				command += "ContainerData"+i+".dat ";
 			}
-			command += ">> "+HEAP_FNAME + pagesize;
+			command += "> "+HEAP_FNAME + pagesize;
 			
 			Runtime r = Runtime.getRuntime();
 		    String[] commands = {"bash", "-c", command};

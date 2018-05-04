@@ -67,16 +67,15 @@ public class dbquery implements dbimpl {
 
 		try {
 			FileInputStream fis = new FileInputStream(heapfile);
-			int[] offsets = new int[2];
+			int pageOffset = 0;
 			try {
-				offsets = seekAndSize(index, pagesize, fis);
+				pageOffset = seekAndSize(index, pagesize, fis);
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.out.println("Error with reading hash index file");
 			}
 			// reading page by page
 			while (isNextPage) {
-				int tempRec = 0;
 				byte[] bPage = new byte[pagesize];
 				byte[] bPageNum = new byte[intSize];
 				fis.read(bPage, 0, pagesize);
@@ -98,7 +97,6 @@ public class dbquery implements dbimpl {
 							recordLen += RECORD_SIZE;
 						}
 						recCount++;
-						tempRec++;
 						// if recordLen exceeds pagesize, catch this to reset to
 						// next page
 					} catch (ArrayIndexOutOfBoundsException e) {
@@ -107,17 +105,16 @@ public class dbquery implements dbimpl {
 						recCount = 0;
 						rid = 0;
 					}
-					/*if (pageCount > offsets[0] && tempRec >= offsets[1]) {
-						isNextRecord = false;
-						isNextPage = false;
-					}*/
 				}
 				// check to complete all pages
 				if (ByteBuffer.wrap(bPageNum).getInt() != pageCount) {
 					isNextPage = false;
 				}
 				pageCount++;
-				tempRec = 0;
+				if (pageCount > pageOffset) {
+					isNextRecord = false;
+					isNextPage = false;
+				}
 			}
 		} catch (FileNotFoundException e) {
 			System.out.println("File: " + HEAP_FNAME + pagesize + " not found.");
@@ -126,23 +123,20 @@ public class dbquery implements dbimpl {
 		}
 
 	}
-	
-	public int[] seekAndSize(String index, int pagesize, FileInputStream fis) throws IOException, NumberFormatException {
+
+	public int seekAndSize(String index, int pagesize, FileInputStream fis)
+			throws IOException, NumberFormatException {
 		int hashIndex = dbimpl.getHash(index);
 		String line;
 		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile));
-		int[] offsets = new int[2];
+		int pageOffset = 0;
 		// Skip the first header line
 		br.readLine();
 		while ((line = br.readLine()) != null) {
 			String[] tokens = line.split(hashDelim);
 			if (Integer.parseInt(tokens[0]) == hashIndex) {
-				System.out.println("Here");
 				// Adds the number of complete pages in container
-				offsets[0] = Integer.parseInt(tokens[1]);
-				// Adds the number of records in any incomplete page in
-				// container
-				offsets[1] = Integer.parseInt(tokens[2]);
+				pageOffset = Integer.parseInt(tokens[1]);
 				break;
 			} else {
 				// Adds the number of complete pages needed as offset
@@ -150,52 +144,10 @@ public class dbquery implements dbimpl {
 					byte[] temp = new byte[pagesize];
 					fis.read(temp);
 				}
-				// Adds the number of records in any incomplete page needed as offset
-				for (int i = 0; i < Integer.parseInt(tokens[2]); i++) {
-					byte[] temp = new byte[RECORD_SIZE];
-					fis.read(temp);
-				}				
 			}
 		}
 		br.close();
-		return offsets;
-	}
-
-	/*
-	 * Reads the heap file to find the location of the data and the size of said
-	 * data block The first index relates 2 sets of data 0 is related to the
-	 * offset to seek the container 1 is related to the size of the container
-	 * 
-	 * The second index also relates to 2 sets of data 0 is the number of
-	 * complete pages in the relative to the dataset 1 is the number of records
-	 * in any incomplete page relative to the dataset
-	 */
-	public int[][] getOffsets(String index) throws IOException, NumberFormatException {
-		int hashIndex = dbimpl.getHash(index);
-		String line;
-		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile));
-		int[][] offsets = new int[2][2];
-		// Skip the first header line
-		br.readLine();
-		while ((line = br.readLine()) != null) {
-			String[] tokens = line.split(hashDelim);
-			if (Integer.parseInt(tokens[0]) == hashIndex) {
-				// Adds the number of complete pages in container
-				offsets[1][0] += Integer.parseInt(tokens[1]);
-				// Adds the number of records in any incomplete page in
-				// container
-				offsets[1][1] += Integer.parseInt(tokens[2]);
-				break;
-			} else {
-				// Adds the number of complete pages needed as offset
-				offsets[0][0] += Integer.parseInt(tokens[1]);
-				// Adds the number of records in any incomplete page needed as
-				// offset
-				offsets[0][1] += Integer.parseInt(tokens[2]);
-			}
-		}
-		br.close();
-		return offsets;
+		return pageOffset;
 	}
 
 	// read heapfile by page
@@ -208,6 +160,8 @@ public class dbquery implements dbimpl {
 		int rid = 0;
 		boolean isNextPage = true;
 		boolean isNextRecord = true;
+		
+		int containerMod = 0;
 		try {
 			FileInputStream fis = new FileInputStream(heapfile);
 			// reading page by page
@@ -244,6 +198,14 @@ public class dbquery implements dbimpl {
 				}
 				// check to complete all pages
 				if (ByteBuffer.wrap(bPageNum).getInt() != pageCount) {
+					containerMod++;
+					pageCount = 0;
+					recordLen = 0;
+					recCount = 0;
+					rid = 0;
+				}
+				if(containerMod == NUM_CONTAINERS)
+				{
 					isNextPage = false;
 				}
 				pageCount++;

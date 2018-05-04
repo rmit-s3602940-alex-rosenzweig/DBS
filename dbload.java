@@ -51,11 +51,8 @@ public class dbload implements dbimpl {
 		 * Variable Provided in startup code
 		 */
 		dbload load = new dbload();
-		//File heapfile = new File(HEAP_FNAME + pagesize);
 		BufferedReader br = null;
-		FileOutputStream fos = null;
 		String line = "";
-		String nextLine = "";
 		String stringDelimeter = "\t";
 		byte[] RECORD = new byte[RECORD_SIZE];
 		int recCount, totalPages;
@@ -64,9 +61,7 @@ public class dbload implements dbimpl {
 
 		// Container Variables
 		Container[] containers = new Container[NUM_CONTAINERS];
-		int[] containerStartPoints = new int[NUM_CONTAINERS];
 		int hashIndex = -1;
-		int counter = 0;
 
 		// Writing to Containers
 		try {
@@ -124,69 +119,19 @@ public class dbload implements dbimpl {
 		// Writing to heap file
 		try
 		{
-			/*
-			 * Here I take advantage of knowing I will be running on an AWS Linux System
-			 * Using Cat as opposed to reading my sub files in saves a huge amount of time
-			 * reading all the data in file by file and then building the heap from that data
-			 */
-			String command = "cat ";
-			for(int i = NUM_CONTAINERS-1; i > -1; i--)
+			BufferedWriter bw = new BufferedWriter(new FileWriter(hashIndexFile));
+			for(int i = containers.length-1; i >= 0; i--)
 			{
-				command += "ContainerData"+i+".dat ";
+				br = new BufferedReader(new FileReader(containers[i].getFileName()));
+				char[] buf = new char[pagesize];
+				while(br.read(buf) != -1)
+				{
+					bw.write(buf);
+				}
+				br.close();
 			}
-			command += "> "+HEAP_FNAME + pagesize;
-			
-			Runtime r = Runtime.getRuntime();
-		    String[] commands = {"bash", "-c", command};
-	        Process p = r.exec(commands);
-	        p.waitFor();
+			bw.close();
 	        
-	        //Get hash indexs
-	        /*br = new BufferedReader(new FileReader(heapfile));
-	        for(int i = 0; i< containers[63].getNumPages(); i++)
-	        {
-	        	char[] buf = new char[pagesize]; 
-	        	br.read(buf);
-	        }	        
-	        if(containers[63].getCurPageNumRecords() > 0)
-	        {
-	        	char[] buf = new char[RECORD_SIZE*containers[63].getCurPageNumRecords()]; 
-	        	br.read(buf);
-	        }
-	        
-	        for(int i = 0; i< containers[62].getNumPages(); i++)
-	        {
-	        	char[] buf = new char[pagesize]; 
-	        	br.read(buf);
-	        }	        
-	        if(containers[62].getCurPageNumRecords() > 0)
-	        {
-	        	char[] buf = new char[RECORD_SIZE*containers[62].getCurPageNumRecords()]; 
-	        	br.read(buf);
-	        }
-	        
-	        for(int i = 0; i< containers[61].getNumPages(); i++)
-	        {
-	        	char[] buf = new char[pagesize]; 
-	        	br.read(buf);
-	        }	        
-	        if(containers[61].getCurPageNumRecords() > 0)
-	        {
-	        	char[] buf = new char[RECORD_SIZE*containers[61].getCurPageNumRecords()]; 
-	        	br.read(buf);
-	        }
-	        for(int i = 0; i< containers[60].getNumPages(); i++)
-	        {
-	        	char[] buf = new char[pagesize]; 
-	        	br.read(buf);
-	        }	        
-	        if(containers[60].getCurPageNumRecords() > 0)
-	        {
-	        	char[] buf = new char[RECORD_SIZE*containers[60].getCurPageNumRecords()]; 
-	        	br.read(buf);
-	        	System.out.println("\n"+br.readLine());
-	        	br.close();
-	        }*/
 	        
 	        //Writes the data for the hash file
 	        BufferedWriter writer = new BufferedWriter(new FileWriter(hashIndexFile));
@@ -207,11 +152,6 @@ public class dbload implements dbimpl {
 			e.printStackTrace();
 		}
 		
-		
-		
-		/*for (int i = 0; i < containers.length; i++) {
-			System.out.println("Container " + (i + 1) + " starts at: " + containerStartPoints[i]);
-		}*/
 		System.out.println("Page total: " + totalPages);
 		System.out.println("Record total: " + recCount);
 	}
@@ -258,15 +198,6 @@ public class dbload implements dbimpl {
 		ByteBuffer bBuffer = ByteBuffer.allocate(4);
 		bBuffer.putInt(i);
 		return bBuffer.array();
-	}
-
-	// EOF padding to fill up remaining pagesize
-	// * minus 4 bytes to add page number at end of file
-	public void eofByteAddOn(FileOutputStream fos, int pSize, int out, int pCount) throws IOException {
-		byte[] fPadding = new byte[pSize - (RECORD_SIZE * out) - 4];
-		byte[] bPageNum = intToByteArray(pCount);
-		fos.write(fPadding);
-		fos.write(bPageNum);
 	}
 
 	// Merges all containers to heap

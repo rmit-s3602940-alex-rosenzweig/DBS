@@ -210,6 +210,7 @@ public class dbquery implements dbimpl {
 				}
 				pageCount++;
 			}
+			fis.close();
 		} catch (FileNotFoundException e) {
 			System.out.println("File: " + HEAP_FNAME + pagesize + " not found.");
 		} catch (IOException e) {

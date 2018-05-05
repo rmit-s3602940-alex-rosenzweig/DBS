@@ -49,7 +49,7 @@ public class dbload implements dbimpl {
 		/*
 		 * Variable Provided in startup code
 		 */
-		//dbload load = new dbload();
+		// dbload load = new dbload();
 		BufferedReader br = null;
 		String line = "";
 		String stringDelimeter = "\t";
@@ -101,12 +101,10 @@ public class dbload implements dbimpl {
 					// final add on at end of file
 					for (int i = 0; i < containers.length; i++) {
 						totalPages += containers[i].getNumPages();
-
 						containers[i].eofByteAddOn(pagesize);
 						// reset counter to start newpage
 						containers[i].setCurPageNumRecords(0);
 						containers[i].setNumPages(containers[i].getNumPages() + 1);
-
 						containers[i].closeOutputStream();
 					}
 					br.close();
@@ -115,28 +113,25 @@ public class dbload implements dbimpl {
 				}
 			}
 		}
+		
 		// Writing to heap file
 		try {
 			/*
-			 * Here I take advantage of knowing I will be running on an AWS Linux System
-			 * Using Cat as opposed to reading my sub files in saves a huge amount of time
-			 * reading all the data in file by file and then building the heap from that data
+			 * Here I take advantage of knowing I will be running on an AWS
+			 * Linux System Using Cat as opposed to reading my sub files in
+			 * saves a huge amount of time reading all the data in file by file
+			 * and then building the heap from that data
 			 */
 			String command = "cat ";
-			for(int i = NUM_CONTAINERS-1; i > -1; i--)
-			{
-				command += "ContainerData"+i+".dat ";
+			for (int i = NUM_CONTAINERS - 1; i > -1; i--) {
+				command += "ContainerData" + i + ".dat ";
 			}
-			command += "> "+HEAP_FNAME + pagesize;
-			
-			Runtime r = Runtime.getRuntime();
-		    String[] commands = {"bash", "-c", command};
-	        Process p = r.exec(commands);
-	        p.waitFor();
+			command += "> " + HEAP_FNAME + pagesize;
+			executeCommand(command);
 
 			// Writes the data for the hash file
 			BufferedWriter writer = new BufferedWriter(new FileWriter(hashIndexFile));
-			writer.write("HashCode" + hashDelim + "NumFullPages" + hashDelim + "RecordsInIncompletePage");
+			writer.write("HashCode" + hashDelim + "NumFullPages");
 			writer.newLine();
 			for (int i = NUM_CONTAINERS - 1; i >= 0; i--) {
 				writer.write(
@@ -144,13 +139,11 @@ public class dbload implements dbimpl {
 				writer.newLine();
 			}
 			writer.close();
-			
-			//Deletes intermediary files used by containers
-			if(!DEBUG)
-			{
-				for(int i = 0; i < containers.length; i++)
-				{
-					File file = new File("ContainerData"+i+".dat");
+
+			// Deletes intermediary files used by containers
+			if (!DEBUG) {
+				for (int i = 0; i < containers.length; i++) {
+					File file = new File("ContainerData" + i + ".dat");
 					file.delete();
 				}
 			}
@@ -207,13 +200,10 @@ public class dbload implements dbimpl {
 		return bBuffer.array();
 	}
 
-	// Merges all containers to heap
-	public void mergeToHeap() {
-
-	}
-
-	// Writes the data for the hash file
-	public void writeHashFile() {
-
+	public void executeCommand(String command) throws IOException, InterruptedException {
+		Runtime r = Runtime.getRuntime();
+		String[] commands = { "bash", "-c", command };
+		Process p = r.exec(commands);
+		p.waitFor();
 	}
 }

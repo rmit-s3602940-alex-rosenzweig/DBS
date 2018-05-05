@@ -138,11 +138,7 @@ public class dbquery implements dbimpl {
 				pageOffset = Integer.parseInt(tokens[1]);
 				break;
 			} else {
-				// Adds the number of complete pages needed as offset
-				for (int i = 0; i < Integer.parseInt(tokens[1]); i++) {
-					byte[] temp = new byte[pagesize];
-					fis.read(temp);
-				}
+				fis.skip(pagesize * Integer.parseInt(tokens[1]));
 			}
 		}
 		br.close();

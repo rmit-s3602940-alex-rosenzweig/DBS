@@ -79,7 +79,6 @@ public class dbquery implements dbimpl {
 				byte[] bPageNum = new byte[intSize];
 				fis.read(bPage, 0, pagesize);
 				System.arraycopy(bPage, bPage.length - intSize, bPageNum, 0, intSize);
-
 				// reading by record, return true to read the next record
 				isNextRecord = true;
 				while (isNextRecord) {
@@ -155,7 +154,6 @@ public class dbquery implements dbimpl {
 		int rid = 0;
 		boolean isNextPage = true;
 		boolean isNextRecord = true;
-		
 		int containerMod = 0;
 		try {
 			FileInputStream fis = new FileInputStream(heapfile);
@@ -193,6 +191,8 @@ public class dbquery implements dbimpl {
 				}
 				// check to complete all pages
 				if (ByteBuffer.wrap(bPageNum).getInt() != pageCount) {
+					//Checks the spillover record
+					printRecord(bPage, name);
 					containerMod++;
 					pageCount = 0;
 					recordLen = 0;
@@ -217,6 +217,7 @@ public class dbquery implements dbimpl {
 	public void printRecord(byte[] rec, String input) {
 		String record = new String(rec);
 		String BN_NAME = record.substring(RID_SIZE + REGISTER_NAME_SIZE, RID_SIZE + REGISTER_NAME_SIZE + BN_NAME_SIZE);
+		//System.out.println(record);
 		if (BN_NAME.toLowerCase().contains(input.toLowerCase())) {
 			System.out.println(record);
 		}

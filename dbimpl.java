@@ -73,6 +73,7 @@ public interface dbimpl
                            + BN_STATE_NUM_SIZE
                            + BN_STATE_OF_REG_SIZE;
    
+   
    //name of the file that the hash index data is written too
    public static final String hashIndexFile = "hashIndex.dat";
    //Delimeter for all the data stored in the hash index file

@@ -8,9 +8,6 @@ import java.nio.ByteBuffer;
 public class dbload implements dbimpl {
 	// initialize
 	public static void main(String args[]) {
-		for (int i = 0; i < args.length; i++) {
-			System.out.println(args[i]);
-		}
 		dbload load = new dbload();
 
 		// calculate load time

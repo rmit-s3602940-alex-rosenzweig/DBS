@@ -71,10 +71,11 @@ public class dbload implements dbimpl
       
       
       //Bucket Variables  
-      boolean[] bucketStatus = new boolean[NUM_BUCKETS];
+      int depth = pagesize/RECORD_SIZE;
+      int[] bucketStatus = new int[NUM_BUCKETS];
       for(int i = 0; i < NUM_BUCKETS; i++)
       {
-    	  bucketStatus[i] = false;
+    	  bucketStatus[i] = 0;
       }
       try
       {
@@ -88,9 +89,9 @@ public class dbload implements dbimpl
         	
             String[] entry = line.split(stringDelimeter, -1);
             int hashCode = dbimpl.getHash(entry[1]);
-            if(!bucketStatus[hashCode])
+            if(bucketStatus[hashCode] != depth)
             {
-            	bucketStatus[hashCode] = true;
+            	bucketStatus[hashCode]++;
             	String s = hashCode+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
             	hashIndex.write(s.getBytes());
             	hashIndex.flush();
@@ -100,29 +101,24 @@ public class dbload implements dbimpl
             	int offset = dbimpl.hashFunction2(entry[1]);
             	int i = 1;
             	while(true)
-            	{
-            		
+            	{            		
 	            	int newIndex = (hashCode + i * offset) % NUM_BUCKETS;
 	            	//Implement Double Hashing
-	            	if(!bucketStatus[newIndex])
+	            	if(bucketStatus[newIndex] != depth)
 	            	{
-	            		if(entry[1].equals("NewGenTronics"))
+	            		bucketStatus[newIndex]++;
+	            		if(i == 5)
 	            		{
-	            			System.out.println("i: "+i+" hashCode: "+newIndex);
+	            			System.out.println(entry[1]);
 	            		}
-	            		bucketStatus[newIndex] = true;
 	                	String s = newIndex+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
 	                	hashIndex.write(s.getBytes());
 	            		hashIndex.flush();
-	            		/*if(i == 1)
-	            		{
-	            			System.out.println(entry[1]);
-	            		}*/
-	            		//System.out.println("here");
 	            		break;
 	            	}
 	            	if(newIndex == hashCode)
 	            	{
+	            		System.out.println("Hash Code: "+hashCode+" New Index: "+newIndex);
 	            		System.out.println("Error");
 	            		return;
 	            	}

@@ -81,8 +81,8 @@ public interface dbimpl
 
    //Determines the Number of Container Slots
    //I have set this to 64 but will change for information used in report
-   public static int NUM_BUCKETS = 5705941;
-   public static int BUCKET_DEPTH = 1;
+   public static final int NUM_BUCKETS = 3705941;
+   public static short BUCKET_DEPTH = 1;
    
    //Boolean that allows the user to see the
    //Intermediary files used to temporarily hold data

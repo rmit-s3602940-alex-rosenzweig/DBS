@@ -56,80 +56,97 @@ public class dbquery implements dbimpl {
 	}
 
 	public int findOffset(String term, int pagesize) throws IOException {
-		int intSize = 4;
+		int counter = 0;
+		int depth = pagesize / RECORD_SIZE;
 		boolean found = false;
-		String line;
+		//String line = "";
 		// Reader for the hash index
 		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile));
 
 		// Reader for heap file
-		FileInputStream fis = new FileInputStream(new File(HEAP_FNAME + pagesize));
+		RandomAccessFile fis = new RandomAccessFile((HEAP_FNAME + pagesize), "rw");
 
-		while ((line = br.readLine()) != null) {
-			// Stores data of hash index entry
+		for(String line; (line = br.readLine()) != null; ) {
+	        // process the line.
+	    	// Stores data of hash index entry
 			String[] temp = line.split(",");
 			// Checks for a match for initial hash
-			if (Integer.parseInt(temp[0]) == dbimpl.getHash(term)) {
+			if (Integer.parseInt(temp[0]) == dbimpl.getHash(term)) 
+			{
 				// Skips to the relevant spot
-				fis.skip(Integer.parseInt(temp[1]));
+				fis.seek(Integer.parseInt(temp[1]));
 				byte[] record = new byte[RECORD_SIZE];
 				fis.read(record, 0, RECORD_SIZE);
-				found = printRecord(record, term);
+				found = printRecord(record, term);				
+				if(found || counter == depth)
+				{
+					break;
+				}
+				counter++;
 			}
 
 		}
 		fis.close();
 		br.close();
-		
 		if(!found)
 		{
-			found = search(term, pagesize);			
+			found = search(term, pagesize, depth);			
 		}
 		
 		return -1;
 	}
 	
-	public boolean search(String term, int pagesize) throws NumberFormatException, IOException
+	public boolean search(String term, int pagesize, int depth) throws NumberFormatException, IOException
 	{
 		boolean found = false;
 		String line;
+		int counter = 0;
 		int i = 1;
 		int offset = dbimpl.hashFunction2(term);
 		int hash = dbimpl.getHash(term);
 		// Reader for the hash index
-		RandomAccessFile raf = new RandomAccessFile(hashIndexFile, "rw");
+		BufferedReader br;
 
 		// Reader for heap file
 		RandomAccessFile fis = new RandomAccessFile((HEAP_FNAME + pagesize), "rw");
 		while(!found)
 		{
-			while ((line = raf.readLine()) != null) {
-				if(i ==27143)
-				{
-					System.out.println("Working!ish");
-				}
+			//Initialises the buffered reader
+			br = new BufferedReader(new FileReader(hashIndexFile));
+			
+			//Gets the value of the double hash
+			int hashCode = (hash + i * offset) % NUM_BUCKETS;
+			//Reads Hash index line by line
+			while ((line = br.readLine()) != null) {
 				// Stores data of hash index entry
 				String[] temp = line.split(",");
-				// Checks for a match for initial hash
-				int hashCode = (hash + i * offset) % NUM_BUCKETS;
+				// Checks for a match with the hash
 				if (Integer.parseInt(temp[0]) == hashCode)
 				{
 					// Skips to the relevant spot
 					fis.seek(Integer.parseInt(temp[1]));
 					byte[] record = new byte[RECORD_SIZE];
+					//reads the record into the byte array
 					fis.read(record, 0, RECORD_SIZE);
+					
+					//Attempts to print the record
 					found = printRecord(record, term);
-					break;
+					counter++;
+					
+					//Early termination optimisation
+					if(found || counter == depth)
+					{
+						//Closes the buffered reader if we terminate early
+						br.close();
+						break;
+					}
 				}
 			}
+			counter = 0;
 			i++;
-			fis.seek(0);
-			raf.seek(0);
-
+			br.close();
 		}
 		fis.close();
-		raf.close();
-		
 		return found;
 	}
 

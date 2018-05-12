@@ -43,6 +43,12 @@ public class Bucket {
 		updateFullStatus();
 	}
 	
+	public void clearData()
+	{
+		data[curDepth -1] = null;
+		data = null;
+	}
+	
 	private void updateFullStatus()
 	{
 		if(curDepth == depth)

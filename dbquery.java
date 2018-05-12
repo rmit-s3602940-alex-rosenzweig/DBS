@@ -1,5 +1,6 @@
 import java.nio.ByteBuffer;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.BufferedReader;
@@ -82,49 +83,53 @@ public class dbquery implements dbimpl {
 		
 		if(!found)
 		{
-			System.out.println("Here");
-			int i = 1;
-			while(!found)
-			{
-				found = secondarySearch(term, pagesize, i);
-				i++;
-			}
-			
+			found = search(term, pagesize);			
 		}
 		
 		return -1;
 	}
 	
-	public boolean secondarySearch(String term, int pagesize, int indexer) throws NumberFormatException, IOException
+	public boolean search(String term, int pagesize) throws NumberFormatException, IOException
 	{
 		boolean found = false;
 		String line;
+		int i = 1;
 		int offset = dbimpl.hashFunction2(term);
 		int hash = dbimpl.getHash(term);
 		// Reader for the hash index
-		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile));
+		RandomAccessFile raf = new RandomAccessFile(hashIndexFile, "rw");
 
 		// Reader for heap file
-		FileInputStream fis = new FileInputStream(new File(HEAP_FNAME + pagesize));
-
-		while ((line = br.readLine()) != null) {
-			// Stores data of hash index entry
-			String[] temp = line.split(",");
-			// Checks for a match for initial hash
-			int hashCode = (hash + indexer * offset) % NUM_BUCKETS;
-			if (Integer.parseInt(temp[0]) == hashCode)
-			{
-				// Skips to the relevant spot
-				fis.skip(Integer.parseInt(temp[1]));
-				byte[] record = new byte[RECORD_SIZE];
-				fis.read(record, 0, RECORD_SIZE);
-				System.out.println(new String(record));
-				found = printRecord(record, term);
+		RandomAccessFile fis = new RandomAccessFile((HEAP_FNAME + pagesize), "rw");
+		while(!found)
+		{
+			while ((line = raf.readLine()) != null) {
+				if(i ==27143)
+				{
+					System.out.println("Working!ish");
+				}
+				// Stores data of hash index entry
+				String[] temp = line.split(",");
+				// Checks for a match for initial hash
+				int hashCode = (hash + i * offset) % NUM_BUCKETS;
+				if (Integer.parseInt(temp[0]) == hashCode)
+				{
+					// Skips to the relevant spot
+					fis.seek(Integer.parseInt(temp[1]));
+					byte[] record = new byte[RECORD_SIZE];
+					fis.read(record, 0, RECORD_SIZE);
+					found = printRecord(record, term);
+					break;
+				}
 			}
+			i++;
+			fis.seek(0);
+			raf.seek(0);
 
 		}
 		fis.close();
-		br.close();
+		raf.close();
+		
 		return found;
 	}
 

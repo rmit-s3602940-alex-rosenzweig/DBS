@@ -59,7 +59,6 @@ public class dbload implements dbimpl
 	  /*
 	   * Variable Provided in startup code
 	   */
-      dbload load = new dbload();
       File heapfile = new File(HEAP_FNAME + pagesize);
       BufferedReader br = null;
       FileOutputStream fos = null, hashIndex = null;
@@ -72,10 +71,10 @@ public class dbload implements dbimpl
       
       
       //Bucket Variables  
-      Bucket[] buckets = new Bucket[NUM_BUCKETS];
+      boolean[] bucketStatus = new boolean[NUM_BUCKETS];
       for(int i = 0; i < NUM_BUCKETS; i++)
       {
-    	  buckets[i] = new Bucket(RECORD_SIZE, pagesize, BUCKET_DEPTH);
+    	  bucketStatus[i] = false;
       }
       try
       {
@@ -89,10 +88,12 @@ public class dbload implements dbimpl
         	
             String[] entry = line.split(stringDelimeter, -1);
             int hashCode = dbimpl.getHash(entry[1]);
-            if(!buckets[hashCode].isFull())
+            if(!bucketStatus[hashCode])
             {
-            	buckets[hashCode].write(hashCode, pageCount, outCount);
-            	hashIndex.write(buckets[hashCode].getData().getBytes());
+            	bucketStatus[hashCode] = true;
+            	String s = hashCode+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
+            	hashIndex.write(s.getBytes());
+            	hashIndex.flush();
             }
             else
             {
@@ -103,16 +104,27 @@ public class dbload implements dbimpl
             		
 	            	int newIndex = (hashCode + i * offset) % NUM_BUCKETS;
 	            	//Implement Double Hashing
-	            	if(!buckets[newIndex].isFull())
+	            	if(!bucketStatus[newIndex])
 	            	{
-	            		buckets[newIndex].write(newIndex, pageCount, outCount);
-	            		hashIndex.write(buckets[newIndex].getData().getBytes());
+	            		if(entry[1].equals("NewGenTronics"))
+	            		{
+	            			System.out.println("i: "+i+" hashCode: "+newIndex);
+	            		}
+	            		bucketStatus[newIndex] = true;
+	                	String s = newIndex+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
+	                	hashIndex.write(s.getBytes());
+	            		hashIndex.flush();
+	            		/*if(i == 1)
+	            		{
+	            			System.out.println(entry[1]);
+	            		}*/
+	            		//System.out.println("here");
 	            		break;
 	            	}
 	            	if(newIndex == hashCode)
 	            	{
 	            		System.out.println("Error");
-	            		break;
+	            		return;
 	            	}
 	            	i++;
             	}

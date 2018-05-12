@@ -81,7 +81,8 @@ public interface dbimpl
 
    //Determines the Number of Container Slots
    //I have set this to 64 but will change for information used in report
-   public static final int NUM_CONTAINERS = 64;
+   public static int NUM_BUCKETS = 5705941;
+   public static int BUCKET_DEPTH = 1;
    
    //Boolean that allows the user to see the
    //Intermediary files used to temporarily hold data
@@ -98,8 +99,19 @@ public interface dbimpl
 	   //Gets the hash code for each string
 	   //Returns the absolute value
 	   //Distribution should be even as the hash code is pseudo random
-	   // ((438439 × k + 34723753) MOD 376307) MOD 10
-	   return Math.abs((((438439 * s.hashCode()) + 34723753) %  376307) % NUM_CONTAINERS);
+	   return Math.abs(((438439 * s.hashCode()) + 34723753) %  376307) % NUM_BUCKETS;
    }
+   
+   public static int hashFunction2(String s)
+   {
+	   //1 + ( (K/M) mod (M-1) )
+	   //Temporary Hash Function
+	   //Gets the hash code for each string
+	   //Returns the absolute value
+	   //Distribution should be even as the hash code is pseudo random
+	   // ((438439 × k + 34723753) MOD 376307) MOD 10
+	   return 1 + (Math.abs((s.hashCode()/NUM_BUCKETS)) % (NUM_BUCKETS-1));
+   }
+   
 
 }

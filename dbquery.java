@@ -27,11 +27,15 @@ public class dbquery implements dbimpl {
 	public void readArguments(String args[]) {
 		if (args.length == 2) {
 			if (isInteger(args[1])) {
-				linearSearch(args[0], Integer.parseInt(args[1]));
-			}
-		} else if (args.length == 4) {
-			if (isInteger(args[1]) && args[2].equals("-i")) {
-				SearchIndex(args[0], Integer.parseInt(args[1]), args[3]);
+				try {
+					findOffset(args[0], Integer.parseInt(args[1]));
+				} catch (NumberFormatException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		} else {
 			System.out.println("Error: only pass in two arguments");
@@ -50,102 +54,80 @@ public class dbquery implements dbimpl {
 		return isValidInt;
 	}
 
-	/*
-	 * Code for a index to speed up search
-	 */
-	public void SearchIndex(String name, int pagesize, String index) {
-
-		File heapfile = new File(HEAP_FNAME + pagesize);
+	public int findOffset(String term, int pagesize) throws IOException {
 		int intSize = 4;
-		int pageCount = 0;
-		int recCount = 0;
-		int recordLen = 0;
-		int rid = 0;
-		boolean isNextPage = true;
-		boolean isNextRecord = true;
-
-		try {
-			FileInputStream fis = new FileInputStream(heapfile);
-			int pageOffset = 0;
-			try {
-				pageOffset = seekAndSize(index, pagesize, fis);
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.out.println("Error with reading hash index file");
-			}
-			// reading page by page
-			while (isNextPage) {
-				byte[] bPage = new byte[pagesize];
-				byte[] bPageNum = new byte[intSize];
-				fis.read(bPage, 0, pagesize);
-				System.arraycopy(bPage, bPage.length - intSize, bPageNum, 0, intSize);
-				// reading by record, return true to read the next record
-				isNextRecord = true;
-				while (isNextRecord) {
-					byte[] bRecord = new byte[RECORD_SIZE];
-					byte[] bRid = new byte[intSize];
-					try {
-						System.arraycopy(bPage, recordLen, bRecord, 0, RECORD_SIZE);
-						System.arraycopy(bRecord, 0, bRid, 0, intSize);
-						rid = ByteBuffer.wrap(bRid).getInt();
-						if (rid != recCount) {
-							isNextRecord = false;
-						} else {
-							printRecord(bRecord, name);
-							recordLen += RECORD_SIZE;
-						}
-						recCount++;
-						// if recordLen exceeds pagesize, catch this to reset to
-						// next page
-					} catch (ArrayIndexOutOfBoundsException e) {
-						isNextRecord = false;
-						recordLen = 0;
-						recCount = 0;
-						rid = 0;
-					}
-				}
-				// check to complete all pages
-				if (ByteBuffer.wrap(bPageNum).getInt() != pageCount) {
-					isNextPage = false;
-				}
-				pageCount++;
-				if (pageCount > pageOffset) {
-					isNextRecord = false;
-					isNextPage = false;
-				}
-			}
-		} catch (FileNotFoundException e) {
-			System.out.println("File: " + HEAP_FNAME + pagesize + " not found.");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-	}
-
-	public int seekAndSize(String index, int pagesize, FileInputStream fis)
-			throws IOException, NumberFormatException {
-		int hashIndex = dbimpl.getHash(index);
+		boolean found = false;
 		String line;
+		int hashCode = dbimpl.getHash(term);
+		// Reader for the hash index
 		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile));
-		int pageOffset = 0;
-		// Skip the first header line
-		br.readLine();
+
+		// Reader for heap file
+		FileInputStream fis = new FileInputStream(new File(HEAP_FNAME + pagesize));
+
 		while ((line = br.readLine()) != null) {
-			String[] tokens = line.split(hashDelim);
-			if (Integer.parseInt(tokens[0]) == hashIndex) {
-				// Adds the number of complete pages in container
-				pageOffset = Integer.parseInt(tokens[1]);
-				break;
-			} else {
-				fis.skip(pagesize * Integer.parseInt(tokens[1]));
+			// Stores data of hash index entry
+			String[] temp = line.split(",");
+			// Checks for a match for initial hash
+			if (Integer.parseInt(temp[0]) == hashCode) {
+				// Skips to the relevant spot
+				fis.skip(Integer.parseInt(temp[1]));
+				byte[] record = new byte[RECORD_SIZE];
+				fis.read(record, 0, RECORD_SIZE);
+				found = printRecord(record, term);
 			}
+
 		}
+		fis.close();
 		br.close();
-		return pageOffset;
+		
+		if(!found)
+		{
+			System.out.println("Here");
+			for(int i = hashCode; i < NUM_BUCKETS; i++)
+        	{   
+				found = secondarySearch(term, pagesize, i);
+			}
+			
+		}
+		
+		return -1;
+	}
+	
+	public boolean secondarySearch(String term, int pagesize, int index) throws NumberFormatException, IOException
+	{
+		boolean found = false;
+		String line;
+		int offset = dbimpl.hashFunction2(term);
+		int hash = dbimpl.getHash(term);
+		// Reader for the hash index
+		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile));
+
+		// Reader for heap file
+		FileInputStream fis = new FileInputStream(new File(HEAP_FNAME + pagesize));
+
+		while ((line = br.readLine()) != null) {
+			// Stores data of hash index entry
+			String[] temp = line.split(",");
+			// Checks for a match for initial hash
+			if (Integer.parseInt(temp[0]) == index)
+			{
+				// Skips to the relevant spot
+				fis.skip(Integer.parseInt(temp[1]));
+				byte[] record = new byte[RECORD_SIZE];
+				fis.read(record, 0, RECORD_SIZE);
+				System.out.println(new String(record));
+				found = printRecord(record, term);
+			}
+
+		}
+		fis.close();
+		br.close();
+		return found;
 	}
 
 	// read heapfile by page
-	public void linearSearch(String name, int pagesize) {
+	public void readHeap(String name, int pagesize) {
 		File heapfile = new File(HEAP_FNAME + pagesize);
 		int intSize = 4;
 		int pageCount = 0;
@@ -154,7 +136,6 @@ public class dbquery implements dbimpl {
 		int rid = 0;
 		boolean isNextPage = true;
 		boolean isNextRecord = true;
-		int containerMod = 0;
 		try {
 			FileInputStream fis = new FileInputStream(heapfile);
 			// reading page by page
@@ -191,21 +172,10 @@ public class dbquery implements dbimpl {
 				}
 				// check to complete all pages
 				if (ByteBuffer.wrap(bPageNum).getInt() != pageCount) {
-					//Checks the spillover record
-					printRecord(bPage, name);
-					containerMod++;
-					pageCount = 0;
-					recordLen = 0;
-					recCount = 0;
-					rid = 0;
-				}
-				if(containerMod == NUM_CONTAINERS)
-				{
 					isNextPage = false;
 				}
 				pageCount++;
 			}
-			fis.close();
 		} catch (FileNotFoundException e) {
 			System.out.println("File: " + HEAP_FNAME + pagesize + " not found.");
 		} catch (IOException e) {
@@ -214,12 +184,13 @@ public class dbquery implements dbimpl {
 	}
 
 	// returns records containing the argument text from shell
-	public void printRecord(byte[] rec, String input) {
+	public boolean printRecord(byte[] rec, String input) {
 		String record = new String(rec);
 		String BN_NAME = record.substring(RID_SIZE + REGISTER_NAME_SIZE, RID_SIZE + REGISTER_NAME_SIZE + BN_NAME_SIZE);
-		//System.out.println(record);
 		if (BN_NAME.toLowerCase().contains(input.toLowerCase())) {
 			System.out.println(record);
+			return true;
 		}
+		return false;
 	}
 }

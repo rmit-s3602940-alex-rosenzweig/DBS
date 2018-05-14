@@ -81,9 +81,9 @@ public interface dbimpl
 
    //Determines the Number of Container Slots
    //I have set this to 64 but will change for information used in report
-   public static final int NUM_BUCKETS = 3705941;
-   public static short BUCKET_DEPTH = 1;
-   
+   public static final int NUM_BUCKETS = 600000;
+   //Static depth of buckets (num record associations it can hold)
+   public static final int BUCKET_DEPTH = 8;
    //Boolean that allows the user to see the
    //Intermediary files used to temporarily hold data
    public static final boolean DEBUG = false;
@@ -95,21 +95,16 @@ public interface dbimpl
    //New Function to computer hash
    public static int getHash(String s)
    {
-	   //Temporary Hash Function
 	   //Gets the hash code for each string
 	   //Returns the absolute value
 	   //Distribution should be even as the hash code is pseudo random
 	   return Math.abs(((438439 * s.hashCode()) + 34723753) %  376307) % NUM_BUCKETS;
    }
    
+   //New function to provide offset for double hashing
    public static int hashFunction2(String s)
    {
-	   //1 + ( (K/M) mod (M-1) )
-	   //Temporary Hash Function
-	   //Gets the hash code for each string
-	   //Returns the absolute value
-	   //Distribution should be even as the hash code is pseudo random
-	   // ((438439 × k + 34723753) MOD 376307) MOD 10
+	   //Can never be 0
 	   return 1 + (Math.abs((s.hashCode()/NUM_BUCKETS)) % (NUM_BUCKETS-1));
    }
    

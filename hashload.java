@@ -6,16 +6,12 @@ import java.nio.ByteBuffer;
  *  Database Systems - HEAP IMPLEMENTATION
  */
 
-public class dbload implements dbimpl
+public class hashload implements dbimpl
 {
     // initialize
    public static void main(String args[])
    {
-	  for(int i = 0; i < args.length; i++)
-	  {
-		  System.out.println(args[i]);
-	  }
-      dbload load = new dbload();
+      hashload load = new hashload();
 
       // calculate load time
       long startTime = System.currentTimeMillis();
@@ -28,16 +24,17 @@ public class dbload implements dbimpl
    // reading command line arguments
    public void readArguments(String args[])
    {
-      if (args.length == 3)
+	   //Validates correct number of arguments
+      if (args.length == 2)
       {
-         if (args[0].equals("-p") && isInteger(args[1]))
+         if (isInteger(args[1]))
          {
-            readFile(args[2], Integer.parseInt(args[1]));
+            readFile(args[0], Integer.parseInt(args[1]));
          }
       }
-      else
+      else //Tells user what to do if they did the wrong thing
       {
-         System.out.println("Error: only pass in three arguments");
+         System.out.println("Error: only pass in two arguments");
       }
    }
 
@@ -63,30 +60,77 @@ public class dbload implements dbimpl
 	  /*
 	   * Variable Provided in startup code
 	   */
-      dbload load = new dbload();
+	  //Used to make sure we skip the header
+	  boolean skipFirstLine = true;
       File heapfile = new File(HEAP_FNAME + pagesize);
       BufferedReader br = null;
-      FileOutputStream fos = null;
+      FileOutputStream fos = null, hashIndex = null;
       String line = "";
       String nextLine = "";
       String stringDelimeter = "\t";
       byte[] RECORD = new byte[RECORD_SIZE];
       int outCount, pageCount, recCount;
       outCount = pageCount = recCount = 0;
-
-      //Bucket Variables
-      int currentBucket = 0;
       
       
+      //Bucket Variables  
+      int[] bucketStatus = new int[NUM_BUCKETS];
+      for(int i = 0; i < NUM_BUCKETS; i++)
+      {
+    	  bucketStatus[i] = 0;
+      }
       try
       {
          // create stream to write bytes to according page size
+    	 hashIndex = new FileOutputStream(hashIndexFile);
          fos = new FileOutputStream(heapfile);
          br = new BufferedReader(new FileReader(filename));
          // read line by line
          while ((line = br.readLine()) != null)
          {
+        	if(skipFirstLine) //Skips the header
+        	{
+        		skipFirstLine = false;
+        		continue;
+        	}
             String[] entry = line.split(stringDelimeter, -1);
+            int hashCode = dbimpl.getHash(entry[1]);
+            //If bucket has space we write to it
+            if(bucketStatus[hashCode] != BUCKET_DEPTH) 
+            {
+            	bucketStatus[hashCode]++;
+            	String s = hashCode+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
+            	//Write to hash index file
+            	hashIndex.write(s.getBytes());
+            	hashIndex.flush();
+            }
+            else //Otherwise we search for open buckets using double hashing
+            {
+            	//Second hash function
+            	int offset = dbimpl.hashFunction2(entry[1]);
+            	int i = 1;
+            	while(true)
+            	{            		
+	            	int newIndex = (hashCode + i * offset) % NUM_BUCKETS;
+	            	//Implement Double Hashing
+	            	if(bucketStatus[newIndex] != BUCKET_DEPTH)
+	            	{
+	            		//Writes data to hash index
+	            		bucketStatus[newIndex]++;
+	                	String s = newIndex+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
+	                	//Writes data
+	                	hashIndex.write(s.getBytes());
+	            		hashIndex.flush();
+	            		break;
+	            	}
+	            	if(newIndex == hashCode)//Not space left in any bucket
+	            	{
+	            		System.out.println("Error: To many records");
+	            		return;
+	            	}
+	            	i++;
+            	}
+            }
             RECORD = createRecord(RECORD, entry, outCount);
             // outCount is to count record and reset everytime
             // the number of bytes has exceed the pagesize
@@ -123,6 +167,8 @@ public class dbload implements dbimpl
                   pageCount++;
                }
                fos.close();
+               hashIndex.flush();
+               hashIndex.close();
                br.close();
             }
             catch (IOException e)

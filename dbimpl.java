@@ -75,7 +75,7 @@ public interface dbimpl
    
    
    //name of the file that the hash index data is written too
-   public static final String hashIndexFile = "hashIndex.dat";
+   public static final String hashIndexFile = "hash.";
    //Delimeter for all the data stored in the hash index file
    public static final String hashDelim = ",";
 
@@ -84,9 +84,9 @@ public interface dbimpl
    public static final int NUM_BUCKETS = 600000;
    //Static depth of buckets (num record associations it can hold)
    public static final int BUCKET_DEPTH = 8;
-   //Boolean that allows the user to see the
-   //Intermediary files used to temporarily hold data
-   public static final boolean DEBUG = false;
+   
+   public static int hashIndexLength = 50;
+   public static int lineBreakSize = 2;
    
    public void readArguments(String args[]);
 

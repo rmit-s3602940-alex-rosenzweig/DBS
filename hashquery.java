@@ -61,7 +61,7 @@ public class hashquery implements dbimpl {
 		boolean found = false;
 		//String line = "";
 		// Reader for the hash index
-		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile));
+		BufferedReader br = new BufferedReader(new FileReader(hashIndexFile+pagesize));
 
 		// Reader for heap file
 		RandomAccessFile fis = new RandomAccessFile((HEAP_FNAME + pagesize), "rw");
@@ -115,7 +115,7 @@ public class hashquery implements dbimpl {
 		while(!found)
 		{
 			//Initialises the buffered reader
-			br = new BufferedReader(new FileReader(hashIndexFile));
+			br = new BufferedReader(new FileReader(hashIndexFile + pagesize));
 			
 			//Gets the value of the double hash
 			int hashCode = (hash + i * offset) % NUM_BUCKETS;
@@ -140,13 +140,13 @@ public class hashquery implements dbimpl {
 					if(found || counter == BUCKET_DEPTH)
 					{
 						//Closes the buffered reader if we terminate early
+						System.out.println(hashCode);
 						br.close();
 						break;
 					}
 				}
 				if(hashCode == hash)//Value isn't in heap file
 				{
-					System.out.println("Search Term not in heap");
 					br.close();
 					fis.close();
 					return false;
@@ -218,6 +218,7 @@ public class hashquery implements dbimpl {
 			e.printStackTrace();
 		}
 	}
+	
 
 	// returns records containing the argument text from shell
 	//Converted to boolean so we know if it printed or not

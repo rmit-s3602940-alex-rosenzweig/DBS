@@ -11,7 +11,7 @@ public class hashload implements dbimpl
     // initialize
    public static void main(String args[])
    {
-      hashload load = new hashload();
+	   hashload load = new hashload();
 
       // calculate load time
       long startTime = System.currentTimeMillis();
@@ -25,16 +25,24 @@ public class hashload implements dbimpl
    public void readArguments(String args[])
    {
 	   //Validates correct number of arguments
-      if (args.length == 2)
+      if (args.length == 1)
       {
-         if (isInteger(args[1]))
+         if (isInteger(args[0]))
          {
-            readFile(args[0], Integer.parseInt(args[1]));
+        	 try {
+				readHeap(Integer.parseInt(args[0]));
+			} catch (NumberFormatException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
          }
       }
       else //Tells user what to do if they did the wrong thing
       {
-         System.out.println("Error: only pass in two arguments");
+         System.out.println("Error: only pass in one argument");
       }
    }
 
@@ -53,134 +61,6 @@ public class hashload implements dbimpl
       }
       return isValidInt;
    }
-
-   // read .csv file using buffered reader
-   public void readFile(String filename, int pagesize)
-   {
-	  /*
-	   * Variable Provided in startup code
-	   */
-	  //Used to make sure we skip the header
-	  boolean skipFirstLine = true;
-      File heapfile = new File(HEAP_FNAME + pagesize);
-      BufferedReader br = null;
-      FileOutputStream fos = null, hashIndex = null;
-      String line = "";
-      String nextLine = "";
-      String stringDelimeter = "\t";
-      byte[] RECORD = new byte[RECORD_SIZE];
-      int outCount, pageCount, recCount;
-      outCount = pageCount = recCount = 0;
-      
-      
-      //Bucket Variables  
-      int[] bucketStatus = new int[NUM_BUCKETS];
-      for(int i = 0; i < NUM_BUCKETS; i++)
-      {
-    	  bucketStatus[i] = 0;
-      }
-      try
-      {
-         // create stream to write bytes to according page size
-    	 hashIndex = new FileOutputStream(hashIndexFile);
-         fos = new FileOutputStream(heapfile);
-         br = new BufferedReader(new FileReader(filename));
-         // read line by line
-         while ((line = br.readLine()) != null)
-         {
-        	if(skipFirstLine) //Skips the header
-        	{
-        		skipFirstLine = false;
-        		continue;
-        	}
-            String[] entry = line.split(stringDelimeter, -1);
-            int hashCode = dbimpl.getHash(entry[1]);
-            //If bucket has space we write to it
-            if(bucketStatus[hashCode] != BUCKET_DEPTH) 
-            {
-            	bucketStatus[hashCode]++;
-            	String s = hashCode+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
-            	//Write to hash index file
-            	hashIndex.write(s.getBytes());
-            	hashIndex.flush();
-            }
-            else //Otherwise we search for open buckets using double hashing
-            {
-            	//Second hash function
-            	int offset = dbimpl.hashFunction2(entry[1]);
-            	int i = 1;
-            	while(true)
-            	{            		
-	            	int newIndex = (hashCode + i * offset) % NUM_BUCKETS;
-	            	//Implement Double Hashing
-	            	if(bucketStatus[newIndex] != BUCKET_DEPTH)
-	            	{
-	            		//Writes data to hash index
-	            		bucketStatus[newIndex]++;
-	                	String s = newIndex+","+(((pageCount*pagesize) + (outCount * RECORD_SIZE))) + "\r\n";
-	                	//Writes data
-	                	hashIndex.write(s.getBytes());
-	            		hashIndex.flush();
-	            		break;
-	            	}
-	            	if(newIndex == hashCode)//Not space left in any bucket
-	            	{
-	            		System.out.println("Error: To many records");
-	            		return;
-	            	}
-	            	i++;
-            	}
-            }
-            RECORD = createRecord(RECORD, entry, outCount);
-            // outCount is to count record and reset everytime
-            // the number of bytes has exceed the pagesize
-            outCount++;
-            fos.write(RECORD);
-            if ((outCount+1)*RECORD_SIZE > pagesize)
-            {
-               eofByteAddOn(fos, pagesize, outCount, pageCount);
-               //reset counter to start newpage
-               outCount = 0;
-               pageCount++;
-            }
-            recCount++;
-         }
-      }
-      catch (FileNotFoundException e)
-      {
-         System.out.println("File: " + filename + " not found.");
-      }
-      catch (Exception e)
-      {
-         e.printStackTrace();
-      }
-      finally
-      {
-         if (br != null)
-         {
-            try
-            {
-               // final add on at end of file
-               if ((nextLine = br.readLine()) == null)
-               {
-                  eofByteAddOn(fos, pagesize, outCount, pageCount);
-                  pageCount++;
-               }
-               fos.close();
-               hashIndex.flush();
-               hashIndex.close();
-               br.close();
-            }
-            catch (IOException e)
-            {
-               e.printStackTrace();
-            }
-         }
-      }
-      System.out.println("Page total: " + pageCount);
-      System.out.println("Record total: " + recCount);
-   }
-
    // create byte array for a field and append to record array at correct 
    // offset using array copy
    public void copy(String entry, int SIZE, int DATA_OFFSET, byte[] rec)
@@ -195,47 +75,138 @@ public class hashload implements dbimpl
       }
       System.arraycopy(DATA, 0, rec, DATA_OFFSET, DATA.length);
    }
+   
+	// read heapfile by page (No longer used, Halil's code)
+	public void readHeap(int pagesize) throws FileNotFoundException {
+		FileOutputStream hashIndex = new FileOutputStream(hashIndexFile + pagesize);
+		File heapfile = new File(HEAP_FNAME + pagesize);
+		int intSize = 4;
+		int pageCount = 0;
+		int recCount = 0;
+		int recordLen = 0;
+		int rid = 0;
+		boolean isNextPage = true;
+		boolean isNextRecord = true;
+		
+		//Bucket Variables  
+	    int[] bucketStatus = new int[NUM_BUCKETS];
+	    for(int i = 0; i < NUM_BUCKETS; i++)
+	    {
+	    	bucketStatus[i] = 0;
+	    }
+		
+		try {
+			FileInputStream fis = new FileInputStream(heapfile);
+			// reading page by page
+			while (isNextPage) {
+				byte[] bPage = new byte[pagesize];
+				byte[] bPageNum = new byte[intSize];
+				fis.read(bPage, 0, pagesize);
+				System.arraycopy(bPage, bPage.length - intSize, bPageNum, 0, intSize);
 
-   // creates record by appending using array copy and then applying offset
-   // where neccessary
-   public byte[] createRecord(byte[] rec, String[] entry, int out)
-          throws UnsupportedEncodingException 
-   {
-      byte[] RID = intToByteArray(out);
-      System.arraycopy(RID, 0, rec, 0, RID.length);
+				// reading by record, return true to read the next record
+				isNextRecord = true;
+				while (isNextRecord) {
+					byte[] bRecord = new byte[RECORD_SIZE];
+					byte[] bRid = new byte[intSize];
+					try {
+						System.arraycopy(bPage, recordLen, bRecord, 0, RECORD_SIZE);
+						System.arraycopy(bRecord, 0, bRid, 0, intSize);
+						rid = ByteBuffer.wrap(bRid).getInt();
+						if (rid != recCount) {
+							isNextRecord = false;
+						} else {
+							if(!writeIndex(bRecord, bucketStatus, pagesize, pageCount, recCount, hashIndex))
+							{
+			            		System.out.println("Error: To many records");
+								return;
+							}
+							recordLen += RECORD_SIZE;
+						}
+						recCount++;
+						// if recordLen exceeds pagesize, catch this to reset to
+						// next page
+					} catch (ArrayIndexOutOfBoundsException e) {
+						isNextRecord = false;
+						recordLen = 0;
+						recCount = 0;
+						rid = 0;
+					}
+				}
+				// check to complete all pages
+				if (ByteBuffer.wrap(bPageNum).getInt() != pageCount) {
+					isNextPage = false;
+				}
+				pageCount++;
+			}
+		} catch (FileNotFoundException e) {
+			System.out.println("File: " + HEAP_FNAME + pagesize + " not found.");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	
 
-      copy(entry[0], REGISTER_NAME_SIZE, RID_SIZE, rec);
+	// returns records containing the argument text from shell
+	//Converted to boolean so we know if it printed or not
+	public boolean writeIndex(byte[] rec, int[] bucketStatus, int pagesize,  int pageCount,
+		int recCount, FileOutputStream hashIndex) throws IOException {
+		String record = new String(rec);
+		String BN_NAME = record.substring(RID_SIZE + REGISTER_NAME_SIZE, RID_SIZE + REGISTER_NAME_SIZE + BN_NAME_SIZE);
+		//Check for space in current bucket
+		
+		String str = "";
+		char[] x = BN_NAME.toCharArray();
+		for(int i = 0; i < BN_NAME.length(); i++)
+		{
+			if(x[i] == '\0')
+			{
+				break;
+			}
+			str += x[i];
+		}
+		int hashCode = dbimpl.getHash(str);
 
-      copy(entry[1], BN_NAME_SIZE, BN_NAME_OFFSET, rec);
-
-      copy(entry[2], BN_STATUS_SIZE, BN_STATUS_OFFSET, rec);
-
-      copy(entry[3], BN_REG_DT_SIZE, BN_REG_DT_OFFSET, rec);
-
-      copy(entry[4], BN_CANCEL_DT_SIZE, BN_CANCEL_DT_OFFSET, rec);
-
-      copy(entry[5], BN_RENEW_DT_SIZE, BN_RENEW_DT_OFFSET, rec);
-
-      copy(entry[6], BN_STATE_NUM_SIZE, BN_STATE_NUM_OFFSET, rec);
-
-      copy(entry[7], BN_STATE_OF_REG_SIZE, BN_STATE_OF_REG_OFFSET, rec);
-
-      copy(entry[8], BN_ABN_SIZE, BN_ABN_OFFSET, rec);
-
-      return rec;
-   }
-
-   // EOF padding to fill up remaining pagesize
-   // * minus 4 bytes to add page number at end of file
-   public void eofByteAddOn(FileOutputStream fos, int pSize, int out, int pCount) 
-          throws IOException
-   {
-      byte[] fPadding = new byte[pSize-(RECORD_SIZE*out)-4];
-      byte[] bPageNum = intToByteArray(pCount);
-      fos.write(fPadding);
-      fos.write(bPageNum);
-   }
-
+        //If bucket has space we write to it
+        if(bucketStatus[hashCode] != BUCKET_DEPTH) 
+        {
+        	bucketStatus[hashCode]++;
+        	String s = hashCode+","+(((pageCount*pagesize) + (recCount * RECORD_SIZE))) + "\r\n";
+        	//Write to hash index file
+        	hashIndex.write(s.getBytes());
+        	hashIndex.flush();
+        }
+        else //Otherwise we search for open buckets using double hashing
+        {
+        	//Second hash function
+        	int offset = dbimpl.hashFunction2(str);
+        	int i = 1;
+        	while(true)
+        	{            		
+            	int newIndex = (hashCode + i * offset) % NUM_BUCKETS;
+            	//Implement Double Hashing
+            	if(bucketStatus[newIndex] != BUCKET_DEPTH)
+            	{
+            		//Writes data to hash index
+            		bucketStatus[newIndex]++;
+                	String s = newIndex+","+(((pageCount*pagesize) + (recCount * RECORD_SIZE))) + "\r\n";
+                	//Writes data
+                	hashIndex.write(s.getBytes());
+            		hashIndex.flush();
+            		break;
+            	}
+            	if(newIndex == hashCode)//Not space left in any bucket
+            	{
+            		return false;
+            	}
+            	i++;
+        	}
+        }
+		//Not a match
+		return true;
+	}
+	
    // converts ints to a byte array of allocated size using bytebuffer
    public byte[] intToByteArray(int i)
    {

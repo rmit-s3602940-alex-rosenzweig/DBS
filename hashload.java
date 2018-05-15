@@ -37,6 +37,10 @@ public class hashload implements dbimpl
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				System.out.println("Error building hash index base");
+				e.printStackTrace();
 			}
          }
       }
@@ -77,8 +81,9 @@ public class hashload implements dbimpl
    }
    
 	// read heapfile by page (No longer used, Halil's code)
-	public void readHeap(int pagesize) throws FileNotFoundException {
-		FileOutputStream hashIndex = new FileOutputStream(hashIndexFile + pagesize);
+	public void readHeap(int pagesize) throws IOException {
+		fillHashIndex(pagesize);
+		RandomAccessFile hashIndex = new RandomAccessFile((hashIndexFile + pagesize), "rw");
 		File heapfile = new File(HEAP_FNAME + pagesize);
 		int intSize = 4;
 		int pageCount = 0;
@@ -139,6 +144,7 @@ public class hashload implements dbimpl
 				}
 				pageCount++;
 			}
+			fis.close();
 		} catch (FileNotFoundException e) {
 			System.out.println("File: " + HEAP_FNAME + pagesize + " not found.");
 		} catch (IOException e) {
@@ -146,41 +152,63 @@ public class hashload implements dbimpl
 		}
 	}
 	
+	//Fills up the hash index file with null characters
+	public void fillHashIndex(int pagesize) throws IOException
+	{
+		FileOutputStream hashIndex = new FileOutputStream(hashIndexFile + pagesize);
+		String nullData = "";
+		for(int i = 0; i < hashIndexLength; i++)
+		{
+			nullData += '\0';
+		}
+		nullData += "\r\n";
+		for(int i = 0; i < NUM_BUCKETS * BUCKET_DEPTH; i++)
+		{
+			hashIndex.write(nullData.getBytes());
+		}
+		hashIndex.close();
+	}
 	
 
 	// returns records containing the argument text from shell
 	//Converted to boolean so we know if it printed or not
 	public boolean writeIndex(byte[] rec, int[] bucketStatus, int pagesize,  int pageCount,
-		int recCount, FileOutputStream hashIndex) throws IOException {
+		int recCount, RandomAccessFile hashIndex) throws IOException {
 		String record = new String(rec);
 		String BN_NAME = record.substring(RID_SIZE + REGISTER_NAME_SIZE, RID_SIZE + REGISTER_NAME_SIZE + BN_NAME_SIZE);
-		//Check for space in current bucket
+
 		
-		String str = "";
+		String realStr = "";
 		char[] x = BN_NAME.toCharArray();
+		//Removes null characters from string
 		for(int i = 0; i < BN_NAME.length(); i++)
 		{
 			if(x[i] == '\0')
 			{
 				break;
 			}
-			str += x[i];
+			realStr += x[i];
 		}
-		int hashCode = dbimpl.getHash(str);
-
+		
+		//Gets basic hash value
+		int hashCode = dbimpl.getHash(realStr);
+		
+		//Check for space in current bucket
         //If bucket has space we write to it
         if(bucketStatus[hashCode] != BUCKET_DEPTH) 
         {
-        	bucketStatus[hashCode]++;
         	String s = hashCode+","+(((pageCount*pagesize) + (recCount * RECORD_SIZE))) + "\r\n";
         	//Write to hash index file
+        	hashIndex.seek((hashIndexLength + lineBreakSize) * (bucketStatus[hashCode] + (hashCode * BUCKET_DEPTH)));
+        	//Writes data to correct spot in hash index
         	hashIndex.write(s.getBytes());
-        	hashIndex.flush();
+        	//Updates our tracker of bucket space
+        	bucketStatus[hashCode]++;
         }
         else //Otherwise we search for open buckets using double hashing
         {
         	//Second hash function
-        	int offset = dbimpl.hashFunction2(str);
+        	int offset = dbimpl.hashFunction2(realStr);
         	int i = 1;
         	while(true)
         	{            		
@@ -189,11 +217,12 @@ public class hashload implements dbimpl
             	if(bucketStatus[newIndex] != BUCKET_DEPTH)
             	{
             		//Writes data to hash index
-            		bucketStatus[newIndex]++;
                 	String s = newIndex+","+(((pageCount*pagesize) + (recCount * RECORD_SIZE))) + "\r\n";
-                	//Writes data
+                	//Writes data to correct spot in hash index
+                	hashIndex.seek((hashIndexLength + lineBreakSize) * (bucketStatus[newIndex]+ (newIndex * BUCKET_DEPTH)));
                 	hashIndex.write(s.getBytes());
-            		hashIndex.flush();
+                	//Updates our tracker of bucket space
+                	bucketStatus[newIndex]++;
             		break;
             	}
             	if(newIndex == hashCode)//Not space left in any bucket

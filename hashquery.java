@@ -65,13 +65,18 @@ public class hashquery implements dbimpl {
 
 		// Reader for heap file
 		RandomAccessFile fis = new RandomAccessFile((HEAP_FNAME + pagesize), "rw");
+		int hash = dbimpl.getHash(term);
 
 		for(String line; (line = br.readLine()) != null; ) {
+			if(line.startsWith("\0"))
+			{
+				continue;
+			}
 	        // process the line.
 	    	// Stores data of hash index entry
 			String[] temp = line.split(",");
 			// Checks for a match for initial hash
-			if (Integer.parseInt(temp[0]) == dbimpl.getHash(term)) 
+			if (Integer.parseInt(temp[0]) == hash) 
 			{
 				// Skips to the relevant spot
 				fis.seek(Integer.parseInt(temp[1]));
@@ -83,6 +88,10 @@ public class hashquery implements dbimpl {
 					break;
 				}
 				counter++;
+			}
+			if(Integer.parseInt(temp[0]) > hash)
+			{
+				break;
 			}
 
 		}
@@ -119,8 +128,18 @@ public class hashquery implements dbimpl {
 			
 			//Gets the value of the double hash
 			int hashCode = (hash + i * offset) % NUM_BUCKETS;
+			if(hashCode == hash)//Value isn't in heap file
+			{
+				br.close();
+				fis.close();
+				return false;
+			}
 			//Reads Hash index line by line
 			while ((line = br.readLine()) != null) {
+				if(line.startsWith("\0"))
+				{
+					continue;
+				}
 				// Stores data of hash index entry
 				String[] temp = line.split(",");
 				// Checks for a match with the hash
@@ -140,16 +159,15 @@ public class hashquery implements dbimpl {
 					if(found || counter == BUCKET_DEPTH)
 					{
 						//Closes the buffered reader if we terminate early
-						System.out.println(hashCode);
 						br.close();
 						break;
 					}
 				}
-				if(hashCode == hash)//Value isn't in heap file
+				//Skips because we have already read all we need
+				//From the index (safety measure for non-full buckets)
+				if(Integer.parseInt(temp[0]) > hashCode)
 				{
-					br.close();
-					fis.close();
-					return false;
+					break;
 				}
 			}
 			counter = 0;
